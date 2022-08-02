@@ -4,7 +4,7 @@
 // @version      0.1
 // @description  Extract and Update Text Content of news articles
 // @author       You
-// @match        https://www.channelnewsasia.com/*/*
+// @match        https://www.channelnewsasia.com/*
 // @match        https://cnalifestyle.channelnewsasia.com/*
 // @match        https://cnaluxury.channelnewsasia.com/*
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
@@ -56,6 +56,8 @@ const cleanText = text => {
 
   //List of text segregated into a list of paragraphs
   let docs = document.querySelectorAll(':scope .text-long > p');
+  if (docs.length === 0)
+    docs = document.querySelectorAll(':scope .text-long > div > p');
   docs.forEach(doc => {
     article.text = `${article.text} ${doc.textContent}`;
   });
