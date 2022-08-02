@@ -8,5 +8,6 @@ router.route('/saveAll').post(controller.createArticles);
 router.route('/count').get(controller.countArticles);
 router.route('/getUnprocessedArticles').get(controller.getUnprocessedArticles);
 router.route('/:id').post(controller.updateArticle);
+router.route('/deleteArticles').get(controller.deleteArticles);
 
 module.exports = router;

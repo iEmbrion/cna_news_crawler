@@ -76,5 +76,6 @@ const cleanText = text => {
     console.log(`Failed to update article record.`);
   }
 
+  await redirectToUnprocessedArticle();
   //
 })();
