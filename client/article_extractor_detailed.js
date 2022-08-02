@@ -6,6 +6,7 @@
 // @author       You
 // @match        https://www.channelnewsasia.com/*/*
 // @match        https://cnalifestyle.channelnewsasia.com/*
+// @match        https://cnaluxury.channelnewsasia.com/*
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
 // @grant        none
 // ==/UserScript==
