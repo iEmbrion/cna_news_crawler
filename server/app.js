@@ -11,7 +11,7 @@ app.use('/article', articleRouter);
 //Error handling
 app.all('*', (req, res, next) => {
   console.log('404 not found');
-  next(); // pass control to the next handler
+  res.status(404).send(`Path: ${req.originalUrl} not found!`);
 });
 
 app.use((err, req, res, next) => {

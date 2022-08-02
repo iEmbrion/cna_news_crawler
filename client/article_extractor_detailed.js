@@ -5,6 +5,7 @@
 // @description  Extract and Update Text Content of news articles
 // @author       You
 // @match        https://www.channelnewsasia.com/*/*
+// @match        https://cnalifestyle.channelnewsasia.com/*
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
 // @grant        none
 // ==/UserScript==
