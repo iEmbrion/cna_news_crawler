@@ -3,7 +3,7 @@ const Article = require('../models/article');
 exports.deleteArticles = async (req, res, next) => {
   try {
     await Article.deleteMany({
-      link: { $regex: /.*www.channelnewsasia.com\/watch.*/ },
+      link: { $regex: /.*www.channelnewsasia.com\/Watch.*/ },
     });
     res.status(200).json({
       status: 'success',

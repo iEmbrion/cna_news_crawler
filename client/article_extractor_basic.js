@@ -4,12 +4,10 @@
 // @version      0.1
 // @description  try to take over the world!
 // @author       You
-// @match        https://www.channelnewsasia.com/topic/sri-lanka*
+// @match        https://www.channelnewsasia.com/search?q=*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=channelnewsasia.com
 // @grant        none
 // ==/UserScript==
-
-let openedWindow = null;
 
 //remove nextline chars and extra spaces
 const cleanText = text => {
@@ -18,6 +16,8 @@ const cleanText = text => {
   clean_text = clean_text.replace(/\s+/g, ' ').trim();
   return clean_text;
 };
+
+// match https://www.channelnewsasia.com/topic/*
 
 const openWindow = url => {
   if (!openedWindow) {
@@ -108,7 +108,8 @@ const closeWindow = () => {
     page_no++;
     localStorage.setItem('cur_page_no', page_no);
     window.location.replace(
-      `https://www.channelnewsasia.com/topic/sri-lanka?sort_by=field_release_date_value&sort_order=DESC&page=${page_no}`
+      `https://www.channelnewsasia.com/topic/climate-change-0?sort_by=field_release_date_value&sort_order=DESC&page=${page_no}`
+      //`https://www.channelnewsasia.com/search?q=scams&page=${page_no}`
     );
   } catch (err) {
     console.log(err);
