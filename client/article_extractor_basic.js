@@ -38,7 +38,7 @@ const main = async () => {
   full_url += `&page=`;
 
   //If processing just started, redirect to page 1
-  if (first_load) window.location.href = `${full_url}${1}`;
+  if (first_load) window.location.href = `${full_url}${page_no}`;
 
   //Extract articles from current page (links, header, etc...)
   let docs = document.querySelectorAll('.list-object');
@@ -64,12 +64,13 @@ const main = async () => {
       link,
       header,
       category,
+      source: 'cna',
       date_published: null,
       text: '',
     };
 
     //Ensure cat is within defined / acceptable categories
-    if (category in categories) article_list.push(article);
+    if (categories.includes(category)) article_list.push(article);
   });
 
   //Send articles to server for persisting
@@ -91,17 +92,10 @@ const main = async () => {
     localStorage.setItem('cur_page_no', page_no);
     window.location.href = `${full_url}${page_no}`;
   } catch (err) {
-    console.log(err);
+    console.log(`Error saving articles: ${err}`);
     console.log(`Process terminated at Page number ${page_no}`);
   }
 };
-
-async function check(changes, observer) {
-  if (document.querySelector('.list-object')) {
-    observer.disconnect();
-    await main();
-  }
-}
 
 //remove nextline chars and extra spaces
 const cleanText = text => {
@@ -110,6 +104,26 @@ const cleanText = text => {
   clean_text = clean_text.replace(/\s+/g, ' ').trim();
   return clean_text;
 };
+
+async function check(changes, observer) {
+  const observer_timeout = setTimeout(
+    () => {
+      // when the timeout expires, stop watching…
+      observer.disconnect();
+      console.log('Observer Timeout!');
+    },
+    5000 // how long to wait before rejecting
+  );
+
+  if (
+    document.querySelector('.list-object') ||
+    document.querySelector('.content-list--no-result')
+  ) {
+    observer.disconnect();
+    clearTimeout(observer_timeout);
+    await main();
+  }
+}
 
 (async function () {
   ('use strict');

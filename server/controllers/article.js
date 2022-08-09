@@ -1,21 +1,24 @@
 const Article = require('../models/article');
 
-exports.deleteArticles = async (req, res, next) => {
+//Saves all articles found in the req.body
+exports.createArticles = async (req, res, next) => {
   try {
-    await Article.deleteMany({
-      link: { $regex: /.*www.channelnewsasia.com\/Watch.*/ },
-    });
-    res.status(200).json({
-      status: 'success',
+    const doc = await Article.insertMany(req.body, { ordered: false });
+    res.status(201).json({
+      message: 'Success!',
+      data: {
+        data: doc,
+      },
     });
   } catch (err) {
     res.status(500).json({
-      message: 'Update fail! Record not found.',
+      message: 'Something went wrong!',
       data: null,
     });
   }
 };
 
+//Used for updating fields of an article
 exports.updateArticle = async (req, res, next) => {
   req.body.date_published = Date.parse(req.body.date_published);
 
@@ -39,6 +42,28 @@ exports.updateArticle = async (req, res, next) => {
   }
 };
 
+//Gets an article where its text is not crawled yet
+exports.getUnprocessedArticle = async (req, res, next) => {
+  try {
+    const articles = await Article.find({ text: '' });
+
+    res.status(200).json({
+      status: 'success',
+      results: articles.length,
+      data: {
+        data: articles,
+      },
+    });
+  } catch (err) {
+    console.log(err.stack);
+    res.status(500).json({
+      message: 'Something went wrong!',
+      data: null,
+    });
+  }
+};
+
+//Get count of all articles
 exports.countArticles = async (req, res, next) => {
   try {
     Article.countDocuments({}, function (err, count) {
@@ -62,24 +87,7 @@ exports.countArticles = async (req, res, next) => {
   }
 };
 
-exports.createArticles = async (req, res, next) => {
-  try {
-    const doc = await Article.insertMany(req.body);
-    res.status(201).json({
-      message: 'Success!',
-      data: {
-        data: doc,
-      },
-    });
-  } catch (err) {
-    console.log(err.stack);
-    res.status(500).json({
-      message: 'Something went wrong!',
-      data: null,
-    });
-  }
-};
-
+//No use case atm
 exports.getArticleByText = async (req, res, next) => {
   try {
     const article = await Article.findOne({ text: req.query.text });
@@ -99,43 +107,21 @@ exports.getArticleByText = async (req, res, next) => {
   }
 };
 
-exports.getUnprocessedArticles = async (req, res, next) => {
+//Used for deleting all documents from the collection
+exports.deleteAll = async (req, res, next) => {
   try {
-    const articles = await Article.find({ text: '' });
-
+    await Article.deleteMany({});
     res.status(200).json({
       status: 'success',
-      results: articles.length,
-      data: {
-        data: articles,
-      },
     });
   } catch (err) {
-    console.log(err.stack);
     res.status(500).json({
-      message: 'Something went wrong!',
+      message: 'Update fail! Record not found.',
       data: null,
     });
   }
 };
 
-// exports.getAll = Model =>
-//   catchAsync(async (req, res, next) => {
-//     //Execute Query
-//     const apiFeatures = new APIFeatures(Model.find(), req.query)
-//       .filter()
-//       .sort()
-//       .limitFields()
-//       .paginate();
-
-//     const doc = await apiFeatures.query;
-//     // const doc = await apiFeatures.query.explain();
-
-//     res.status(200).json({
-//       status: 'success',
-//       results: doc.length,
-//       data: {
-//         data: doc,
-//       },
-//     });
-//   });
+//await Article.deleteMany({
+// link: { $regex: /.*www.channelnewsasia.com\/Watch.*/ },
+// });

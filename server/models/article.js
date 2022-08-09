@@ -14,6 +14,10 @@ const articleSchema = mongoose.Schema({
   category: {
     type: String,
   },
+  source: {
+    type: String,
+    required: true,
+  },
   date_published: {
     type: Date,
     default: null,
