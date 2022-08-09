@@ -113,7 +113,28 @@ const cleanText = text => {
   }
 
   //Extract details and update article object
-  let date_published = document.querySelector('.article-publish').textContent;
+  let date_published = document.querySelector('.article-publish');
+  if (date_published) date_published = date_published.textContent;
+  else {
+    try {
+      await fetch(`http://localhost:8000/article/${article._id}`, {
+        method: 'delete',
+      });
+    } catch (err) {
+      console.log(`Error: Failed to delete article... Terminating script...`);
+      alert(`Fail to delete article. Terminating script...`);
+      return;
+    }
+    //Redirect to next article
+    article = await getUnprocessedArticle();
+    if (article) redirectToArticle(article.link);
+    else {
+      alert(`No next article found. Terminating script...`);
+      console.log(`No next article found. Terminating script...`);
+      return;
+    }
+  }
+
   article.date_published = processDate(date_published);
 
   //List of text segregated into a list of paragraphs
