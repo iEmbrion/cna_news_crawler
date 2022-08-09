@@ -20,32 +20,69 @@ exports.createArticles = async (req, res, next) => {
 
 //Used for updating fields of an article
 exports.updateArticle = async (req, res, next) => {
-  req.body.date_published = Date.parse(req.body.date_published);
+  if (req.body.date_published)
+    req.body.date_published = Date.parse(req.body.date_published);
 
-  const doc = await Article.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-  });
+  try {
+    let curArticle = await Article.findById(req.params.id);
+    if (!curArticle) {
+      console.log(`Update failed. Unable to find article.`);
+      console.log(`Params: ${req.params.id}, ${req.body.header}`);
+      return res.status(500).json({
+        message: 'Update fail! Record not found.',
+        data: null,
+      });
+    }
 
-  if (!doc) {
-    res.status(500).json({
-      message: 'Update fail! Record not found.',
-      data: null,
-    });
-  } else {
-    res.status(200).json({
+    curArticle.date_published = req.body.date_published;
+    curArticle.text = req.body.text;
+    curArticle.isProcessing = undefined;
+    curArticle.text_length = req.body.text_length;
+
+    let doc = await curArticle.save();
+
+    return res.status(200).json({
       status: 'success',
       data: {
         data: doc,
       },
     });
+  } catch (err) {
+    console.log(`Update failed, ${err}`);
+    return res.status(500).json({
+      message: 'Update fail!',
+      data: null,
+    });
+  }
+
+  // const doc = await Article.findByIdAndUpdate(req.params.id, req.body, {
+  //   new: true,
+  //   runValidators: true,
+  // });
+};
+
+exports.deleteArticle = async (req, res, next) => {
+  try {
+    await Article.deleteOne({ _id: req.params.id });
+    res.status(204).json({
+      message: 'Record deleted sucessfully!',
+      data: null,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: 'Something went wrong!',
+      data: null,
+    });
   }
 };
 
-//Gets an article where its text is not crawled yet
+//Gets an article where its text is not crawled yet and not already being processed
 exports.getUnprocessedArticle = async (req, res, next) => {
   try {
-    const articles = await Article.find({ text: '' });
+    const articles = await Article.find({
+      text: '',
+      isProcessing: { $exists: false },
+    });
 
     res.status(200).json({
       status: 'success',
@@ -55,7 +92,6 @@ exports.getUnprocessedArticle = async (req, res, next) => {
       },
     });
   } catch (err) {
-    console.log(err.stack);
     res.status(500).json({
       message: 'Something went wrong!',
       data: null,
@@ -122,6 +158,18 @@ exports.deleteAll = async (req, res, next) => {
   }
 };
 
-//await Article.deleteMany({
-// link: { $regex: /.*www.channelnewsasia.com\/Watch.*/ },
-// });
+exports.deleteArticlesWithVideo = async (req, res, next) => {
+  try {
+    await Article.deleteMany({
+      header: { $regex: /.*\|.*Video.*/ },
+    });
+    res.status(200).json({
+      status: 'success',
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: 'Update fail! Record not found.',
+      data: null,
+    });
+  }
+};

@@ -34,6 +34,9 @@ const articleSchema = mongoose.Schema({
       else return 0;
     },
   },
+  isProcessing: {
+    type: Boolean,
+  },
 });
 
 const Article = mongoose.model('Article', articleSchema);
