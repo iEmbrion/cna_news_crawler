@@ -122,6 +122,9 @@ const cleanText = text => {
     docs = document.querySelectorAll(':scope .text-long > div > p');
   }
   if (docs.length === 0 || !docs) {
+    docs = document.querySelectorAll(':scope .text-long');
+  }
+  if (docs.length === 0 || !docs) {
     alert('DOCS LENGTH 0. EXITING...');
     return;
   }
