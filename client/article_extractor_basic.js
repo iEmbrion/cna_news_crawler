@@ -4,70 +4,51 @@
 // @version      0.1
 // @description  try to take over the world!
 // @author       You
-// @match        https://www.channelnewsasia.com/search?q=*
+// @match        https://www.channelnewsasia.com/search?*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=channelnewsasia.com
 // @grant        none
 // ==/UserScript==
 
-//remove nextline chars and extra spaces
-const cleanText = text => {
-  let clean_text = text;
-  clean_text = clean_text.replace(/\\n|\\r\\n|\\r/g, '');
-  clean_text = clean_text.replace(/\s+/g, ' ').trim();
-  return clean_text;
-};
+const main = async () => {
+  const pause = false;
+  if (pause) return;
 
-// match https://www.channelnewsasia.com/topic/*
+  //Define your query & categorial params
+  const query = 'monkey';
+  const categories = ['Asia', 'Business', 'Singapore', 'Sport', 'World'];
+  const contentTypes = ['article'];
 
-const openWindow = url => {
-  if (!openedWindow) {
-    openedWindow = window.open(url);
-    return;
-  }
-  console.log(
-    'A window is already opened. Please close before calling open window.'
-  );
-};
-
-const closeWindow = () => {
-  if (openedWindow) {
-    openedWindow.close();
-    openedWindow = null;
-    return;
-  }
-};
-
-(async function () {
-  ('use strict');
-
-  //If at first page, init start page
+  //If no page number set yet, start from page 1.
+  let first_load = false;
   let page_no = localStorage.getItem('cur_page_no');
-  if (!page_no) localStorage.setItem('cur_page_no', 0);
-
-  //Exit if no more pages
-  const no_results = document.querySelector(
-    ':scope .content-list--no-result span'
-  );
-
-  if (no_results) {
-    localStorage.setItem('cur_page_no', 0);
-
-    //Fetch and return no. of docs persisted
-    const server_url = 'http://localhost:8000/article/count';
-    try {
-      const res = await fetch(server_url);
-      const data = res.json();
-      console.log(`No. of records persisted: ${data.data.count}`);
-    } catch (err) {
-      console.log(`Error fetching no. of documents processed`);
-    } finally {
-      console.log(`No more pages to process, terminating program...`);
-      return;
-    }
+  if (page_no === null || page_no === undefined) {
+    first_load = true;
+    localStorage.setItem('cur_page_no', 1);
+    page_no = 1;
   }
 
-  //Extract information from current page (links, header, etc...)
-  const docs = document.querySelectorAll('.list-object');
+  //define url, note: page_no is excluded so it could be dynamic at in different redirect statements
+  let base_url = 'https://www.channelnewsasia.com/search?';
+  if (query !== '') base_url += `q=`;
+  let full_url = `${base_url}${query}`;
+  for (let i = 0; i < categories.length; i++)
+    full_url += `&type%5B${i}%5D=${contentTypes[i]}`;
+  for (let i = 0; i < categories.length; i++)
+    full_url += `&categories%5B${i}%5D=${categories[i]}`;
+  full_url += `&page=`;
+
+  //If processing just started, redirect to page 1
+  if (first_load) window.location.href = `${full_url}${1}`;
+
+  //Extract articles from current page (links, header, etc...)
+  let docs = document.querySelectorAll('.list-object');
+
+  //Exit if no more articles to found
+  if (!docs || docs.length === 0) {
+    localStorage.removeItem('cur_page_no');
+    console.log(`No more articles for processing. Exiting program...`);
+    return;
+  }
 
   const article_list = [];
   docs.forEach(async doc => {
@@ -86,12 +67,13 @@ const closeWindow = () => {
       date_published: null,
       text: '',
     };
-    article_list.push(article);
+
+    //Ensure cat is within defined / acceptable categories
+    if (category in categories) article_list.push(article);
   });
 
-  //Send details to server for processing
+  //Send articles to server for persisting
   const server_url = 'http://localhost:8000/article/saveAll';
-
   try {
     const res = await fetch(server_url, {
       method: 'POST',
@@ -102,17 +84,37 @@ const closeWindow = () => {
     });
 
     const data = await res.json();
-    console.log(data);
+    console.log(`Articles persisted ${data}`);
 
     //Redirect to next page after data persisted successfully
     page_no++;
     localStorage.setItem('cur_page_no', page_no);
-    window.location.replace(
-      `https://www.channelnewsasia.com/topic/climate-change-0?sort_by=field_release_date_value&sort_order=DESC&page=${page_no}`
-      //`https://www.channelnewsasia.com/search?q=scams&page=${page_no}`
-    );
+    window.location.href = `${full_url}${page_no}`;
   } catch (err) {
     console.log(err);
     console.log(`Process terminated at Page number ${page_no}`);
   }
+};
+
+async function check(changes, observer) {
+  if (document.querySelector('.list-object')) {
+    observer.disconnect();
+    await main();
+  }
+}
+
+//remove nextline chars and extra spaces
+const cleanText = text => {
+  let clean_text = text;
+  clean_text = clean_text.replace(/\\n|\\r\\n|\\r/g, '');
+  clean_text = clean_text.replace(/\s+/g, ' ').trim();
+  return clean_text;
+};
+
+(async function () {
+  ('use strict');
+  new MutationObserver(check).observe(document, {
+    childList: true,
+    subtree: true,
+  });
 })();
