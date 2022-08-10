@@ -4,7 +4,7 @@
 // @version      0.1
 // @description  Extract and Update Text Content of news articles
 // @author       You
-// @match        https://www.channelnewsasia.com/*
+// @match        https://*.channelnewsasia.com/*
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
 // @grant        none
 // ==/UserScript==
@@ -29,8 +29,20 @@ const logInfo = (custom_message, loc = '') => {
   console.log(message);
 };
 
+//Ensures that url matches the target domain for crawling
+//CNA will at times perform redirects via the initially valid url
+const isCurUrlValid = () => {
+  let isValid = false;
+  //Sample
+  //https://www.channelnewsasia.com/*
+  const cur_url = window.location.href;
+  const regex = /https:\/\/www\.channelnewsasia\.com.*/;
+  const result = cur_url.match(regex);
+  if (result) isValid = true;
+  return isValid;
+};
+
 //Retrieves and returns an unprocessed article record
-//Perform redirect if current url does not match article url
 const getUnprocessedArticle = async () => {
   let article = null;
   try {
@@ -162,15 +174,20 @@ const cleanText = text => {
 
 (async function () {
   'use strict';
-  //Ensures an article finishes processing before moving on to the next
-  let next = false;
-
   //Retrieve a non-processed article
   let article = await getUnprocessedArticle();
 
   //If no more articles to process, return, else redirect to article if not already done so
   if (!article) return;
   redirectToArticle(article.link);
+
+  //If current Url is invalid, delete article and proceed to the next
+  if (!isCurUrlValid()) {
+    if (!(await deleteArticle(article))) return;
+    article = await getUnprocessedArticle();
+    if (!article) return;
+    redirectToArticle(article.link);
+  }
 
   //Lock article for processing
   if (!(await updateProcessingStatus(article, true))) return;

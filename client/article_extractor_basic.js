@@ -9,48 +9,42 @@
 // @grant        none
 // ==/UserScript==
 
-const main = async () => {
-  const pause = false;
-  if (pause) return;
+//For standardizing err handling messages
+//err location is general, can be file name, method name, task name, etc...
+const logError = (err, custom_message = '', err_loc = '') => {
+  let message = `Error`;
+  message = custom_message === '' ? message : `${message}: ${custom_message}`;
+  message = err_loc === '' ? message : `${message} at ${err_loc}`;
 
-  //Define your query & categorial params
-  const query = 'sri%20lanka';
-  const categories = ['Asia', 'Business', 'Singapore', 'Sport', 'World'];
-  const contentTypes = ['article'];
+  console.log(message);
+  console.log(`Error Details: ${err}`);
+};
 
-  //If no page number set yet, start from page 1.
-  let first_load = false;
-  let page_no = localStorage.getItem('cur_page_no');
-  if (page_no === null || page_no === undefined) {
-    first_load = true;
-    localStorage.setItem('cur_page_no', 1);
-    page_no = 1;
-  }
+//For standardizing logging information
+const logInfo = (custom_message, loc = '') => {
+  let message = `Log: `;
+  message = custom_message === '' ? message : `${message}: ${custom_message}`;
+  message = loc === '' ? message : `${message} at ${loc}`;
 
-  //define url, note: page_no is excluded so it could be dynamic at in different redirect statements
-  let base_url = 'https://www.channelnewsasia.com/search?';
-  if (query !== '') base_url += `q=`;
-  let full_url = `${base_url}${query}`;
-  for (let i = 0; i < categories.length; i++)
-    full_url += `&type%5B${i}%5D=${contentTypes[i]}`;
-  for (let i = 0; i < categories.length; i++)
-    full_url += `&categories%5B${i}%5D=${categories[i]}`;
-  full_url += `&page=`;
+  console.log(message);
+};
 
-  //If processing just started, redirect to page 1
-  if (first_load) window.location.href = `${full_url}${page_no}`;
+//Extract articles from current page (links, header, etc...)
+const crawlArticles = categories => {
+  const article_list = [];
 
-  //Extract articles from current page (links, header, etc...)
   let docs = document.querySelectorAll('.list-object');
 
   //Exit if no more articles to found
-  if (!docs || docs.length === 0) {
+  if (docs.length === 0 || !docs) {
+    logInfo(
+      `No more articles for processing. Exiting program...`,
+      `crawlArticles()`
+    );
     localStorage.removeItem('cur_page_no');
-    console.log(`No more articles for processing. Exiting program...`);
-    return;
+    return article_list;
   }
 
-  const article_list = [];
   docs.forEach(async doc => {
     const main = doc.querySelector('.list-object__heading-link');
     const link = main.href;
@@ -59,7 +53,7 @@ const main = async () => {
       doc.querySelector(':scope .list-object__category .link').textContent
     );
 
-    //publish date and text will be populated in next phase
+    //publish date and text will be populated during article text crawling
     const article = {
       link,
       header,
@@ -69,11 +63,15 @@ const main = async () => {
       text: '',
     };
 
-    //Ensure cat is within defined / acceptable categories
+    //Filter articles by categories
     if (categories.includes(category)) article_list.push(article);
   });
 
-  //Send articles to server for persisting
+  return article_list;
+};
+
+const saveArticles = async articles => {
+  let success = false;
   const server_url = 'http://localhost:8000/article/saveAll';
   try {
     const res = await fetch(server_url, {
@@ -81,20 +79,64 @@ const main = async () => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(article_list),
+      body: JSON.stringify(articles),
     });
-
     const data = await res.json();
-    console.log(`Articles persisted ${data}`);
-
-    //Redirect to next page after data persisted successfully
-    page_no++;
-    localStorage.setItem('cur_page_no', page_no);
-    window.location.href = `${full_url}${page_no}`;
+    logInfo(`Articles persisted ${data}`, `saveArticles()`);
+    success = true;
   } catch (err) {
-    console.log(`Error saving articles: ${err}`);
-    console.log(`Process terminated at Page number ${page_no}`);
+    logError(err, `Failed to save articles.`, `saveArticles()`);
   }
+  return success;
+};
+
+//Construct url based on parameters supplied
+//page_no is excluded to make it configurable
+const constructUrl = (query = '', categories = [], contentTypes = []) => {
+  //define url, note: page_no is excluded so it could be dynamic at in different redirect statements
+  let base_url = 'https://www.channelnewsasia.com/search?';
+  if (query !== '') base_url += `q=`;
+  let full_url = `${base_url}${query}`;
+  for (let i = 0; i < categories.length; i++)
+    full_url += `&type%5B${i}%5D=${contentTypes[i]}`;
+  for (let i = 0; i < categories.length; i++)
+    full_url += `&categories%5B${i}%5D=${categories[i]}`;
+  full_url += `&page=`;
+  return full_url;
+};
+
+const main = async () => {
+  const pause = false;
+  if (pause) return;
+
+  //Define your query & categorial params
+  const query = 'disaster';
+  const categories = ['Asia', 'Business', 'Singapore', 'Sport', 'World'];
+  const contentTypes = ['article'];
+
+  //page_no is excluded to make it configurable
+  const full_url = constructUrl(query, categories, contentTypes);
+
+  //If no page number set yet, start from page 1.
+  let page_no = localStorage.getItem('cur_page_no');
+  if (page_no === null || page_no === undefined) {
+    localStorage.setItem('cur_page_no', 1);
+    page_no = 1;
+    window.location.href = `${full_url}${page_no}`;
+  }
+
+  //Extract articles from current page (links, header, etc...)
+  //Return if no more articles to process
+  const article_list = crawlArticles(categories);
+  if (article_list.length === 0) return;
+
+  //Send articles to server for persisting
+  if (!saveArticles(article_list)) return;
+
+  //Redirect to next page after data persisted successfully
+  page_no++;
+  localStorage.setItem('cur_page_no', page_no);
+  window.location.href = `${full_url}${page_no}`;
 };
 
 //remove nextline chars and extra spaces
