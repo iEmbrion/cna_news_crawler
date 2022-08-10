@@ -1,14 +1,15 @@
 // ==UserScript==
-// @name         ST Basic Article Info Extractor
+// @name         Todayonline Basic Article Info Extractor
 // @namespace    http://tampermonkey.net/
 // @version      0.1
 // @description  try to take over the world!
 // @author       You
-// @match        https://www.straitstimes.com/global*
+// @match        https://www.todayonline.com/search?*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=channelnewsasia.com
 // @grant        none
 // ==/UserScript==
 
+//https://www.todayonline.com/search?type%5B0%5D=article&categories%5B0%5D=World&categories%5B1%5D=Singapore&page=2
 //For standardizing err handling messages
 //err location is general, can be file name, method name, task name, etc...
 const logError = (err, custom_message = '', err_loc = '') => {
@@ -62,7 +63,7 @@ const main = async () => {
 
   //Define your query & categorial params
   const query = 'disaster';
-  const categories = ['Asia', 'Business', 'Singapore', 'Sport', 'World'];
+  const categories = ['Asia', 'Singapore', 'Sport', 'World'];
   const contentTypes = ['article'];
 };
 
