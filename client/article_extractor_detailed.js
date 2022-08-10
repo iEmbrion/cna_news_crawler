@@ -9,6 +9,26 @@
 // @grant        none
 // ==/UserScript==
 
+//For standardizing err handling messages
+//err location is general, can be file name, method name, task name, etc...
+const logError = (err, custom_message = '', err_loc = '') => {
+  let message = `Error`;
+  message = custom_message === '' ? message : `${message}: ${custom_message}`;
+  message = err_loc === '' ? message : `${message} at ${err_loc}`;
+
+  console.log(message);
+  console.log(`Error Details: ${err}`);
+};
+
+//For standardizing logging information
+const logInfo = (custom_message, loc = '') => {
+  let message = `Log: `;
+  message = custom_message === '' ? message : `${message}: ${custom_message}`;
+  message = loc === '' ? message : `${message} at ${loc}`;
+
+  console.log(message);
+};
+
 //Retrieves and returns an unprocessed article record
 //Perform redirect if current url does not match article url
 const getUnprocessedArticle = async () => {
@@ -20,14 +40,42 @@ const getUnprocessedArticle = async () => {
     const data = await res.json();
     article = data.data.data;
   } catch (err) {
-    console.log(`Error getting unprocessed article.`);
+    logError(
+      err,
+      `Failed to get unprocessed article.`,
+      `getUnprocessedArticle()`
+    );
   }
+
+  //If no records found, do logging here
+  if (!article)
+    logInfo('No unprocessed articles found.', `getUnprocessedArticle()`);
 
   return article;
 };
 
+const updateArticle = async article => {
+  let success = false;
+  const update_url = `http://localhost:8000/article/${article._id}`;
+  try {
+    const res = await fetch(update_url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(article),
+    });
+    success = true;
+  } catch (err) {
+    logError(err, `Failed to update article.`, `updateArticle()`);
+  }
+  return success;
+};
+
 //Updates processing status of article
 const updateProcessingStatus = async (article, isProcessing) => {
+  let success = false;
+
   //Persist changes to server
   const update_url = `http://localhost:8000/article/${article._id}`;
   if (!isProcessing) article.isProcessing = undefined;
@@ -40,10 +88,52 @@ const updateProcessingStatus = async (article, isProcessing) => {
       },
       body: JSON.stringify(article),
     });
+
+    success = true;
   } catch (err) {
-    console.log(`err at updateProcessingStatus: ${err}`);
-    throw err;
+    logError(
+      err,
+      `Failed to update processing status.`,
+      `updateProcessingStatus()`
+    );
   }
+  return success;
+};
+
+const deleteArticle = async article => {
+  let success = false;
+  try {
+    await fetch(`http://localhost:8000/article/${article._id}`, {
+      method: 'delete',
+    });
+    success = true;
+  } catch (err) {
+    logError(err, `Failed to delete article`, `deleteArticle()`);
+  }
+  return success;
+};
+
+const crawlText = article => {
+  //List of text segregated into a list of paragraphs
+  let docs = document.querySelectorAll(':scope .text-long > p');
+  if (docs.length === 0 || !docs) {
+    docs = document.querySelectorAll(':scope .text-long > div > p');
+  }
+  if (docs.length === 0 || !docs) {
+    docs = document.querySelectorAll(':scope .text-long');
+  }
+  if (docs.length === 0 || !docs) {
+    logError(`N.A.`, `Failed to crawl any text from article.`, `crawlText()`);
+    return article;
+  }
+
+  docs.forEach(doc => {
+    article.text = `${article.text} ${doc.textContent}`;
+  });
+  article.text = cleanText(article.text);
+  article.text_length = article.text.length;
+
+  return article;
 };
 
 const redirectToArticle = article_link => {
@@ -78,114 +168,48 @@ const cleanText = text => {
   //Retrieve a non-processed article
   let article = await getUnprocessedArticle();
 
-  //If no more articles to process, return
-  if (!article) {
-    alert('No more articles for processing...');
-    return;
-  }
-
-  //Redirect to article url if current url !== article url
+  //If no more articles to process, return, else redirect to article if not already done so
+  if (!article) return;
   redirectToArticle(article.link);
 
-  //Lock article for processing and prevent it from being updated by other processes
-  await updateProcessingStatus(article, true);
+  //Lock article for processing
+  if (!(await updateProcessingStatus(article, true))) return;
 
   //Check if link is still valid, if not, delete article and process next one
   const not_found = document.querySelector('[about="/page-not-found"]');
   if (not_found) {
-    try {
-      await fetch(`http://localhost:8000/article/${article._id}`, {
-        method: 'delete',
-      });
-    } catch (err) {
-      console.log(`Error: Failed to delete article... Terminating script...`);
-      alert(`Fail to delete article. Terminating script...`);
-      return;
-    }
+    if (!(await deleteArticle(article))) return;
+
     //Redirect to next article
     article = await getUnprocessedArticle();
-    if (article) redirectToArticle(article.link);
-    else {
-      alert(`No next article found. Terminating script...`);
-      console.log(`No next article found. Terminating script...`);
-      return;
-    }
+    if (!article) return;
+    redirectToArticle(article.link);
   }
 
   //Extract details and update article object
   let date_published = document.querySelector('.article-publish');
+
+  //Delete article if date element cannot be found in html
   if (date_published) date_published = date_published.textContent;
   else {
-    try {
-      await fetch(`http://localhost:8000/article/${article._id}`, {
-        method: 'delete',
-      });
-    } catch (err) {
-      console.log(`Error: Failed to delete article... Terminating script...`);
-      alert(`Fail to delete article. Terminating script...`);
-      return;
-    }
+    if (!(await deleteArticle(article))) return;
+
     //Redirect to next article
     article = await getUnprocessedArticle();
-    if (article) redirectToArticle(article.link);
-    else {
-      alert(`No next article found. Terminating script...`);
-      console.log(`No next article found. Terminating script...`);
-      return;
-    }
+    if (!article) return;
+    redirectToArticle(article.link);
   }
 
   article.date_published = processDate(date_published);
+  article = crawlText(article);
+  if (article.text === '') return;
 
-  //List of text segregated into a list of paragraphs
-  let docs = document.querySelectorAll(':scope .text-long > p');
-  if (docs.length === 0 || !docs) {
-    docs = document.querySelectorAll(':scope .text-long > div > p');
-  }
-  if (docs.length === 0 || !docs) {
-    docs = document.querySelectorAll(':scope .text-long');
-  }
-  if (docs.length === 0 || !docs) {
-    alert('DOCS LENGTH 0. EXITING...');
-    return;
-  }
-  docs.forEach(doc => {
-    article.text = `${article.text} ${doc.textContent}`;
-  });
-  article.text = cleanText(article.text);
-  article.text_length = article.text.length;
+  //Persist changes to server and update processing status to false
+  if (!(await updateArticle(article))) return;
+  if (!(await updateProcessingStatus(article, false))) return;
 
-  //Persist changes to server
-  const update_url = `http://localhost:8000/article/${article._id}`;
-  try {
-    const res = await fetch(update_url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(article),
-    });
-    if (res.status !== 500) next = true;
-    else {
-      alert(`Update failed!, exiting program`);
-      return;
-    }
-  } catch (err) {
-    console.log(err);
-    console.log(`Failed to update article record.`);
-    return;
-  }
-
-  //Finished processing article, update processing status of article to false
-  try {
-    await updateProcessingStatus(article, false);
-
-    //Get next article for processing
-    article = await getUnprocessedArticle();
-    if (article) redirectToArticle(article.link);
-  } catch (err) {
-    alert(`Error finishing processing article... terminating program...`);
-    alert(err);
-    return;
-  }
+  //Get the next article for processing
+  article = await getUnprocessedArticle();
+  if (!article) return;
+  redirectToArticle(article.link);
 })();

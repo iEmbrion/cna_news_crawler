@@ -14,7 +14,7 @@ const main = async () => {
   if (pause) return;
 
   //Define your query & categorial params
-  const query = '';
+  const query = 'sri%20lanka';
   const categories = ['Asia', 'Business', 'Singapore', 'Sport', 'World'];
   const contentTypes = ['article'];
 
