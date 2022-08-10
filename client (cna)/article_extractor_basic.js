@@ -97,7 +97,7 @@ const constructUrl = (query = '', categories = [], contentTypes = []) => {
   let base_url = 'https://www.channelnewsasia.com/search?';
   if (query !== '') base_url += `q=`;
   let full_url = `${base_url}${query}`;
-  for (let i = 0; i < categories.length; i++)
+  for (let i = 0; i < contentTypes.length; i++)
     full_url += `&type%5B${i}%5D=${contentTypes[i]}`;
   for (let i = 0; i < categories.length; i++)
     full_url += `&categories%5B${i}%5D=${categories[i]}`;
