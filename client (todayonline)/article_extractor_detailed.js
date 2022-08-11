@@ -229,10 +229,5 @@ const cleanText = text => {
     //Persist changes to server and update processing status to false
     if (!(await updateArticle(article))) return;
     if (!(result = await updateProcessingStatus(article, false))) return;
-
-    // while (result === undefined) {
-    //   console.log(`Waiting...`);
-    // }
-    // result = undefined;
   }
 })();
