@@ -62,7 +62,7 @@ const main = async () => {
 
   //Define your query & categorial params
   const query = 'disaster';
-  const categories = ['Asia', 'Business', 'Singapore', 'Sport', 'World'];
+  const categories = ['Asia', 'Singapore', 'World'];
   const contentTypes = ['article'];
 };
 

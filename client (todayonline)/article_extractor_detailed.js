@@ -45,13 +45,13 @@ const isCurUrlValid = () => {
 //Retrieves and returns an unprocessed article record
 const getUnprocessedArticle = async () => {
   let article = null;
+  let data = undefined;
   try {
     //Retrieve a non-processed article
     const server_url = 'http://localhost:8000/article/getArticleByText?text=';
     const res = await fetch(server_url);
-    const data = await res.json();
+    data = await res.json();
     article = data.data.data;
-    console.log(article);
   } catch (err) {
     logError(
       err,
@@ -128,13 +128,13 @@ const deleteArticle = async article => {
 
 const crawlText = article => {
   //List of text segregated into a list of paragraphs
-  let docs = document.querySelectorAll(':scope .text-long > p');
+  let docs = document.querySelectorAll(':scope .text .text-long > p');
   if (docs.length === 0 || !docs) {
     alert('1');
-    docs = document.querySelectorAll(':scope .text-long > div > p');
+    docs = document.querySelectorAll(':scope .text .text-long > div > p');
   }
   if (docs.length === 0 || !docs) {
-    docs = document.querySelectorAll(':scope .text-long');
+    docs = document.querySelectorAll(':scope .text .text-long');
     alert('2');
   }
   if (docs.length === 0 || !docs) {
@@ -150,13 +150,6 @@ const crawlText = article => {
   article.text_length = article.text.length;
 
   return article;
-};
-
-const redirectToArticle = article_link => {
-  const cur_url = window.location.href;
-  if (cur_url !== article_link) {
-    window.location.replace(article_link);
-  }
 };
 
 const processDate = date_str => {
@@ -177,79 +170,69 @@ const cleanText = text => {
 
 (async function () {
   'use strict';
+
+  let result = undefined;
+  let article = null;
   //Configurations
   const categories = ['Singapore', 'World'];
 
-  //Retrieve a non-processed article
-  let article = await getUnprocessedArticle();
+  while ((article = await getUnprocessedArticle())) {
+    const cur_url = window.location.href;
+    if (cur_url !== article.link) {
+      window.location.href = article.link;
+      continue;
+    }
 
-  //If no more articles to process, return, else redirect to article if not already done so
-  if (!article) return;
-  redirectToArticle(article.link);
+    //If current Url is invalid, delete article and proceed to the next
+    if (!isCurUrlValid()) {
+      if (!(await deleteArticle(article))) return;
+      continue;
+    }
 
-  //If current Url is invalid, delete article and proceed to the next
-  if (!isCurUrlValid()) {
-    if (!(await deleteArticle(article))) return;
-    article = await getUnprocessedArticle();
-    if (!article) return;
-    redirectToArticle(article.link);
+    //Lock article for processing
+    if (!(await updateProcessingStatus(article, true))) return;
+
+    // Check if link is still valid, if not, delete article and process next one
+    const not_found = document.querySelector('[about="/page-not-found"]');
+    if (not_found) {
+      alert(`not_found!`);
+      if (!(await deleteArticle(article))) return;
+      continue;
+    }
+
+    //Extract details and update article object
+    let date_published = document.querySelector(
+      ':scope .article-date .article__row'
+    );
+
+    //Delete article if date element cannot be found in html
+    if (date_published) date_published = date_published.textContent;
+    else {
+      if (!(await deleteArticle(article))) return;
+      continue;
+    }
+
+    article.date_published = processDate(date_published);
+
+    //Get category and delete articles that doesn't match the category configuration
+    const category = document.querySelector('.list-object__category');
+    if (category) article.category = category.textContent.trim();
+
+    if (!categories.includes(article.category)) {
+      if (!(await deleteArticle(article))) return;
+      continue;
+    }
+
+    article = crawlText(article);
+    if (article.text === '') return;
+
+    //Persist changes to server and update processing status to false
+    if (!(await updateArticle(article))) return;
+    if (!(result = await updateProcessingStatus(article, false))) return;
+
+    // while (result === undefined) {
+    //   console.log(`Waiting...`);
+    // }
+    // result = undefined;
   }
-
-  //Lock article for processing
-  if (!(await updateProcessingStatus(article, true))) return;
-
-  // Check if link is still valid, if not, delete article and process next one
-  const not_found = document.querySelector('[about="/page-not-found"]');
-  if (not_found) {
-    alert(`not_found!`);
-    if (!(await deleteArticle(article))) return;
-
-    //Redirect to next article
-    article = await getUnprocessedArticle();
-    if (!article) return;
-    redirectToArticle(article.link);
-  }
-
-  // //Extract details and update article object
-  let date_published = document.querySelector(
-    ':scope .article-date .article__row'
-  );
-
-  // //Delete article if date element cannot be found in html
-  if (date_published) date_published = date_published.textContent;
-  else {
-    if (!(await deleteArticle(article))) return;
-
-    //Redirect to next article
-    article = await getUnprocessedArticle();
-    if (!article) return;
-    redirectToArticle(article.link);
-  }
-
-  article.date_published = processDate(date_published);
-
-  //Get category and delete articles that doesn't match the category configuration
-  const category = document.querySelector('.list-object__category');
-  if (category) article.category = category.textContent.trim();
-
-  if (!categories.includes(article.category)) {
-    if (!(await deleteArticle(article))) return;
-
-    //Redirect to next article
-    article = await getUnprocessedArticle();
-    if (!article) return;
-    redirectToArticle(article.link);
-  }
-
-  article = crawlText(article);
-  if (article.text === '') return;
-
-  //Persist changes to server and update processing status to false
-  if (!(await updateArticle(article))) return;
-  if (!(await updateProcessingStatus(article, false))) return;
-
-  //Get the next article for processing
-  article = await getUnprocessedArticle();
-  if (!article) return;
-  redirectToArticle(article.link);
 })();

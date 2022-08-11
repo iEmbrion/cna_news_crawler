@@ -36,7 +36,7 @@ const crawlArticles = () => {
   let docs = document.querySelectorAll('.list-object');
 
   //Exit if no more articles to found
-  if (!docs || docs.length === 0) {
+  if (docs.length === 0 || !docs) {
     logInfo(
       `No more articles for processing. Exiting program...`,
       `crawlArticles()`
@@ -49,9 +49,6 @@ const crawlArticles = () => {
     const main = doc.querySelector('.list-object__heading-link');
     const link = main.href;
     const header = cleanText(main.textContent);
-    // const category = cleanText(
-    //   doc.querySelector(':scope .list-object__category .link').textContent
-    // );
 
     //publish date, category and text will be populated during article text crawling
     const article = {
@@ -134,10 +131,11 @@ const main = async () => {
   //Redirect to next page after data persisted successfully
   page_no++;
   localStorage.setItem('cur_page_no', page_no);
-
-  //To remove when full crawling needed
-  if (page_no === 4) return;
-
+  if (page_no === 3) {
+    page_no = 1;
+    localStorage.removeItem('cur_page_no');
+    return;
+  }
   window.location.href = `${full_url}${page_no}`;
 };
 
@@ -156,12 +154,12 @@ async function check(changes, observer) {
       observer.disconnect();
       console.log('Observer Timeout!');
     },
-    10000 // how long to wait before rejecting
+    5000 // how long to wait before rejecting
   );
 
   if (
     document.querySelector('.list-object__heading-link') ||
-    document.querySelector('.content-list--no-result')
+    document.querySelector('.content-list .content-list--no-result')
   ) {
     observer.disconnect();
     clearTimeout(observer_timeout);

@@ -130,17 +130,19 @@ const getRandomNumberBetween = (min, max) => {
 
 exports.getArticleByText = async (req, res, next) => {
   try {
-    let num_unprocessed = 0;
-    const count = await Article.countDocuments({ text: req.query.text }).exec();
-    console.log(`Remaining Documents for text crawling: ${count}`);
+    // let num_unprocessed = 0;
+    // const count = await Article.countDocuments({ text: req.query.text }).exec();
+    // console.log(`Remaining Documents for text crawling: ${count}`);
 
-    let skip = getRandomNumberBetween(1, count - 2);
-    skip = skip > 0 ? skip : 0;
-    console.log(`skip: ${skip}`);
+    // let skip = getRandomNumberBetween(1, count - 2);
+    // skip = skip > 0 ? skip : 0;
+    // console.log(`skip: ${skip}`);
 
-    const article = await Article.findOne({ text: req.query.text }, null, {
-      skip: skip,
-    });
+    // const article = await Article.findOne({ text: req.query.text }, null, {
+    //   skip: skip,
+    // });
+
+    const article = await Article.findOne({ text: req.query.text });
 
     res.status(200).json({
       status: 'success',
