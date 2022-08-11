@@ -131,9 +131,9 @@ exports.getArticleByText = async (req, res, next) => {
   try {
     let num_unprocessed = 0;
     const count = await Article.countDocuments({ text: req.query.text }).exec();
-    console.log(`Remaining Documents: ${count}`);
+    console.log(`Remaining Documents for text crawling: ${count}`);
 
-    const skip = getRandomNumberBetween(1, count);
+    const skip = getRandomNumberBetween(1, count - 2);
     console.log(`skip: ${skip}`);
 
     const article = await Article.findOne({ text: req.query.text }, null, {
