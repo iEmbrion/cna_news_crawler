@@ -34,6 +34,7 @@ exports.updateArticle = async (req, res, next) => {
       });
     }
 
+    curArticle.category = req.body.category;
     curArticle.date_published = req.body.date_published;
     curArticle.text = req.body.text;
     curArticle.isProcessing = undefined;
@@ -133,7 +134,8 @@ exports.getArticleByText = async (req, res, next) => {
     const count = await Article.countDocuments({ text: req.query.text }).exec();
     console.log(`Remaining Documents for text crawling: ${count}`);
 
-    const skip = getRandomNumberBetween(1, count - 2);
+    let skip = getRandomNumberBetween(1, count - 2);
+    skip = skip > 0 ? skip : 0;
     console.log(`skip: ${skip}`);
 
     const article = await Article.findOne({ text: req.query.text }, null, {
@@ -158,7 +160,7 @@ exports.getArticleByText = async (req, res, next) => {
 //Used for deleting all documents from the collection
 exports.deleteAll = async (req, res, next) => {
   try {
-    await Article.deleteMany({});
+    await Article.deleteMany({ source: 'todayonline' });
     res.status(200).json({
       status: 'success',
     });

@@ -130,6 +130,15 @@ const main = async () => {
 
   //Send articles to server for persisting
   if (!saveArticles(article_list)) return;
+
+  //Redirect to next page after data persisted successfully
+  page_no++;
+  localStorage.setItem('cur_page_no', page_no);
+
+  //To remove when full crawling needed
+  if (page_no === 4) return;
+
+  window.location.href = `${full_url}${page_no}`;
 };
 
 //remove nextline chars and extra spaces
@@ -150,10 +159,12 @@ async function check(changes, observer) {
     10000 // how long to wait before rejecting
   );
 
-  if (document.querySelector('.list-object__heading-link')) {
+  if (
+    document.querySelector('.list-object__heading-link') ||
+    document.querySelector('.content-list--no-result')
+  ) {
     observer.disconnect();
     clearTimeout(observer_timeout);
-
     await main();
   }
 }
