@@ -30,7 +30,7 @@ const logInfo = (custom_message, loc = '') => {
 };
 
 //Extract articles from current page (links, header, etc...)
-const crawlArticles = categories => {
+const crawlArticles = () => {
   const article_list = [];
 
   let docs = document.querySelectorAll('.list-object');
@@ -63,8 +63,7 @@ const crawlArticles = categories => {
       text: '',
     };
 
-    //Filter articles by categories
-    if (categories.includes(category)) article_list.push(article);
+    article_list.push(article);
   });
   return article_list;
 };
@@ -126,9 +125,11 @@ const main = async () => {
 
   //Extract articles from current page (links, header, etc...)
   //Return if no more articles to process
-  const article_list = crawlArticles(categories);
+  const article_list = crawlArticles();
   if (article_list.length === 0) return;
-  alert(article_list);
+
+  //Send articles to server for persisting
+  if (!saveArticles(article_list)) return;
 };
 
 //remove nextline chars and extra spaces
@@ -149,7 +150,7 @@ async function check(changes, observer) {
     10000 // how long to wait before rejecting
   );
 
-  if (document.querySelector('.list-object')) {
+  if (document.querySelector('.list-object__heading-link')) {
     observer.disconnect();
     clearTimeout(observer_timeout);
 
