@@ -9,6 +9,8 @@
 // @grant        none
 // ==/UserScript==
 
+let wait = false;
+
 //For standardizing err handling messages
 //err location is general, can be file name, method name, task name, etc...
 const logError = (err, custom_message = '', err_loc = '') => {
@@ -51,6 +53,11 @@ const getUnprocessedArticle = async () => {
     const server_url = 'http://localhost:8000/article/getArticleByText?text=';
     const res = await fetch(server_url);
     data = await res.json();
+
+    while (data === undefined) {
+      console.log('lock');
+    }
+
     article = data.data.data;
   } catch (err) {
     logError(
@@ -171,63 +178,69 @@ const cleanText = text => {
 (async function () {
   'use strict';
 
-  let result = undefined;
   let article = null;
   //Configurations
   const categories = ['Singapore', 'World'];
 
-  while ((article = await getUnprocessedArticle())) {
-    const cur_url = window.location.href;
-    if (cur_url !== article.link) {
-      window.location.href = article.link;
-      continue;
-    }
+  article = await getUnprocessedArticle();
+  if (!article) return;
 
-    //If current Url is invalid, delete article and proceed to the next
-    if (!isCurUrlValid()) {
-      if (!(await deleteArticle(article))) return;
-      continue;
-    }
-
-    //Lock article for processing
-    if (!(await updateProcessingStatus(article, true))) return;
-
-    // Check if link is still valid, if not, delete article and process next one
-    const not_found = document.querySelector('[about="/page-not-found"]');
-    if (not_found) {
-      alert(`not_found!`);
-      if (!(await deleteArticle(article))) return;
-      continue;
-    }
-
-    //Extract details and update article object
-    let date_published = document.querySelector(
-      ':scope .article-date .article__row'
-    );
-
-    //Delete article if date element cannot be found in html
-    if (date_published) date_published = date_published.textContent;
-    else {
-      if (!(await deleteArticle(article))) return;
-      continue;
-    }
-
-    article.date_published = processDate(date_published);
-
-    //Get category and delete articles that doesn't match the category configuration
-    const category = document.querySelector('.list-object__category');
-    if (category) article.category = category.textContent.trim();
-
-    if (!categories.includes(article.category)) {
-      if (!(await deleteArticle(article))) return;
-      continue;
-    }
-
-    article = crawlText(article);
-    if (article.text === '') return;
-
-    //Persist changes to server and update processing status to false
-    if (!(await updateArticle(article))) return;
-    if (!(result = await updateProcessingStatus(article, false))) return;
+  const cur_url = window.location.href;
+  if (cur_url !== article.link) {
+    window.location.replace(article.link);
+    return;
   }
+
+  //If article url is invalid, delete article and proceed to the next
+  if (!isCurUrlValid()) {
+    if (!(await deleteArticle(article))) return;
+    window.location.replace('https://www.todayonline.com/');
+    return;
+  }
+
+  //Lock article for processing
+  if (!(await updateProcessingStatus(article, true))) return;
+
+  // Check if link is still valid, if not, delete article and process next one
+  const not_found = document.querySelector('[about="/page-not-found"]');
+  if (not_found) {
+    alert(`not_found!`);
+    if (!(await deleteArticle(article))) return;
+    window.location.replace('https://www.todayonline.com/');
+    return;
+  }
+
+  //Extract details and update article object
+  let date_published = document.querySelector(
+    ':scope .article-date .article__row'
+  );
+
+  //Delete article if date element cannot be found in html
+  if (date_published) date_published = date_published.textContent;
+  else {
+    if (!(await deleteArticle(article))) return;
+    window.location.replace('https://www.todayonline.com/');
+    return;
+  }
+
+  article.date_published = processDate(date_published);
+
+  //Get category and delete articles that doesn't match the category configuration
+  const category = document.querySelector('.list-object__category');
+  if (category) article.category = category.textContent.trim();
+
+  if (!categories.includes(article.category)) {
+    if (!(await deleteArticle(article))) return;
+    window.location.replace('https://www.todayonline.com/');
+    return;
+  }
+
+  article = crawlText(article);
+  if (article.text === '') return;
+
+  //Persist changes to server and update processing status to false
+  if (!(await updateArticle(article))) return;
+  if (!(await updateProcessingStatus(article, false))) return;
+  window.location.replace('https://www.todayonline.com/');
+  return;
 })();

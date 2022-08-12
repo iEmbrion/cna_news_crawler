@@ -131,11 +131,7 @@ const main = async () => {
   //Redirect to next page after data persisted successfully
   page_no++;
   localStorage.setItem('cur_page_no', page_no);
-  if (page_no === 3) {
-    page_no = 1;
-    localStorage.removeItem('cur_page_no');
-    return;
-  }
+  if (page_no === 2) return;
   window.location.href = `${full_url}${page_no}`;
 };
 
