@@ -5,7 +5,7 @@
 // @description  Extract and Update Text Content of news articles
 // @author       You
 // @match        https://www.todayonline.com/*
-// @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=todayonline.com
 // @grant        none
 // ==/UserScript==
 

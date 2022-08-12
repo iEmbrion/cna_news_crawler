@@ -5,7 +5,7 @@
 // @description  try to take over the world!
 // @author       You
 // @match        https://www.todayonline.com/search*
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=channelnewsasia.com
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=todayonline.com
 // @grant        none
 // ==/UserScript==
 
