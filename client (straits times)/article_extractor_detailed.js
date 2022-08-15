@@ -220,13 +220,12 @@ document.addEventListener('DOMSubtreeModified', async e => {
   ) {
     // Check if link is still valid, if not, delete article and process next one
     processing = true;
-    alert(`Page could not be found! Terminating...`);
-    // let article = await getUnprocessedArticle();
-    // if (!article) return;
-    // if (!(await deleteArticle(article))) return;
-    // let next_article = await getUnprocessedArticle();
-    // if (!next_article) return;
-    // window.location.replace(next_article.link);
+    let article = await getUnprocessedArticle();
+    if (!article) return;
+    if (!(await deleteArticle(article))) return;
+    let next_article = await getUnprocessedArticle();
+    if (!next_article) return;
+    window.location.replace(next_article.link);
     return;
   }
 
@@ -277,9 +276,11 @@ document.addEventListener('DOMSubtreeModified', async e => {
     article = crawlText(article);
 
     if (article.text === '') {
-      alert('No text found in article... Exiting program...');
-      // if (!(await deleteArticle(article))) return;
-      // window.location.replace('https://straitstimes.com/');
+      logInfo('No text found in article... Deleting article..');
+      if (!(await deleteArticle(article))) return;
+      let next_article = await getUnprocessedArticle();
+      if (!next_article) return;
+      window.location.replace(next_article.link);
       return;
     }
 
