@@ -47,7 +47,8 @@ const getUnprocessedArticle = async () => {
   let article = null;
   try {
     //Retrieve a non-processed article
-    const server_url = 'http://localhost:8000/article/getArticleByText?text=';
+    const server_url =
+      'http://localhost:8000/article/getArticleByText?text=&source=cna';
     const res = await fetch(server_url);
     const data = await res.json();
     article = data.data.data;
