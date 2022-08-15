@@ -224,7 +224,6 @@ document.addEventListener('DOMSubtreeModified', async e => {
 
     //Check if content is for subscribers
     if (e.target.querySelector('.paid-premium.st-flag-1')) {
-      alert('here i m');
       logInfo('Content is for subscribers only. Deleting article...');
       if (!(await deleteArticle(article))) return;
 
