@@ -132,9 +132,11 @@ exports.getArticleByText = async (req, res, next) => {
   try {
     const count = await Article.countDocuments({
       text: req.query.text,
-      source: 'todayonline',
+      source: req.query.source,
     }).exec();
-    console.log(`Remaining Documents for text crawling: ${count}`);
+    console.log(
+      `Remaining Documents to crawl for ${req.query.source}: ${count}`
+    );
 
     // let skip = getRandomNumberBetween(1, count - 2);
     // skip = skip > 0 ? skip : 0;

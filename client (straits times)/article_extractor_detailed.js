@@ -1,13 +1,15 @@
 // ==UserScript==
-// @name         Todayonline Text Extractor
+// @name         Straitstimes Text Extractor
 // @namespace    http://tampermonkey.net/
 // @version      0.1
 // @description  Extract and Update Text Content of news articles
 // @author       You
-// @match        https://www.todayonline.com/*
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=todayonline.com
+// @match        https://www.straitstimes.com/*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=straitstimes.com
 // @grant        none
 // ==/UserScript==
+
+let processing = false;
 
 //For standardizing err handling messages
 //err location is general, can be file name, method name, task name, etc...
@@ -31,16 +33,16 @@ const logInfo = (custom_message, loc = '') => {
 
 //Ensures that url matches the target domain for crawling
 //CNA will at times perform redirects via the initially valid url
-const isCurUrlValid = () => {
-  let isValid = false;
-  //Sample
-  //https://www.channelnewsasia.com/*
-  const cur_url = window.location.href;
-  const regex = /https:\/\/www\.todayonline\.com.*/;
-  const result = cur_url.match(regex);
-  if (result) isValid = true;
-  return isValid;
-};
+// const isCurUrlValid = () => {
+//   let isValid = false;
+//   //Sample
+//   //https://www.channelnewsasia.com/*
+//   const cur_url = window.location.href;
+//   const regex = /https:\/\/www\.todayonline\.com.*/;
+//   const result = cur_url.match(regex);
+//   if (result) isValid = true;
+//   return isValid;
+// };
 
 //Retrieves and returns an unprocessed article record
 const getUnprocessedArticle = async () => {
@@ -52,10 +54,6 @@ const getUnprocessedArticle = async () => {
       'http://localhost:8000/article/getArticleByText?text=&source=straitstimes';
     const res = await fetch(server_url);
     data = await res.json();
-
-    while (data === undefined) {
-      console.log('lock');
-    }
 
     article = data.data.data;
   } catch (err) {
@@ -134,17 +132,11 @@ const deleteArticle = async article => {
 
 const crawlText = article => {
   //List of text segregated into a list of paragraphs
-  let docs = document.querySelectorAll(':scope .text .text-long > p');
+  let docs = document.querySelectorAll(
+    ':scope .article-content-rawhtml .layout--onecol .field--type-text-long p'
+  );
+
   if (docs.length === 0 || !docs) {
-    alert('1');
-    docs = document.querySelectorAll(':scope .text .text-long > div > p');
-  }
-  if (docs.length === 0 || !docs) {
-    docs = document.querySelectorAll(':scope .text .text-long');
-    alert('2');
-  }
-  if (docs.length === 0 || !docs) {
-    alert('3');
     logError(`N.A.`, `Failed to crawl any text from article.`, `crawlText()`);
     return article;
   }
@@ -158,11 +150,54 @@ const crawlText = article => {
   return article;
 };
 
+//E.g. input 01:02 PM  output 13:02
+const convertTime12to24 = time12h => {
+  const [time, modifier] = time12h.split(' ');
+  let [hours, minutes] = time.split(':');
+
+  if (hours === '12') {
+    hours = '00';
+  }
+  if (modifier === 'PM') {
+    hours = parseInt(hours, 10) + 12;
+  }
+  return `${hours}:${minutes}`;
+};
+
+//Date from straitstimes "AUG 7, 2022, 1:47 AM SGT"
 const processDate = date_str => {
-  let date_publish = date_str;
-  date_publish = date_publish.trim();
-  date_publish = date_publish + ' 00:00:00' + ' GMT';
-  date_publish = new Date(date_publish);
+  let temp = '';
+  let date_publish = null;
+  let date_arr = date_str.split(' ');
+
+  //Check type of date
+
+  //Type 1: 2 HOURS AGO
+  if (date_arr.length === 3 && date_arr[2] === 'Ago') {
+    //Get current date and subtract accordingly
+    const today = new Date();
+    const curHour = today.getHours();
+    today.setHours(curHour - date_arr[0]);
+    date_publish = today;
+  }
+
+  //Type 2: AUG 7, 2022, 1:47 AM SGT
+  if ((date_arr.length === 6 && date_arr[4] === 'AM') || date_arr[4] === 'PM') {
+    temp =
+      date_arr[1] + ' ' + date_arr[0] + ' ' + date_arr[2] + ' 00:00:00 GMT';
+    temp = temp.replace(/,/g, '');
+
+    // let date_publish = date_str;
+    date_publish = new Date(temp);
+
+    let time = date_arr[3] + ' ' + date_arr[4];
+    time = convertTime12to24(time);
+    let hour = time.split(':')[0];
+    let minute = time.split(':')[1];
+
+    date_publish.setHours(hour);
+    date_publish.setMinutes(minute);
+  }
   date_publish = date_publish.toJSON();
   return date_publish;
 };
@@ -174,73 +209,82 @@ const cleanText = text => {
   return clean_text;
 };
 
-(async function () {
-  'use strict';
-  let article = await getUnprocessedArticle();
-  if (!article) return;
+//Note: Detecting wrong url is not implemented here due to how ST works.
+//To trigger program, go to any article.
+//'window.location.href' detected 'https://www.straitstimes.com/concurrency.html'
+document.addEventListener('DOMSubtreeModified', async e => {
+  if (
+    !processing &&
+    e.target.querySelector(`:scope .group-story-postdate .story-postdate`)
+  ) {
+    processing = true;
 
-  const cur_url = window.location.href;
-  if (cur_url !== article.link) {
-    if (cur_url !== article.link) {
-      window.location.replace(article.link);
+    let article = await getUnprocessedArticle();
+    if (!article) return;
+
+    //Check if content is for subscribers
+    if (e.target.querySelector('.paid-premium.st-flag-1')) {
+      alert('here i m');
+      logInfo('Content is for subscribers only. Deleting article...');
+      if (!(await deleteArticle(article))) return;
+
+      let next_article = await getUnprocessedArticle();
+      if (!next_article) return;
+      window.location.replace(next_article.link);
       return;
     }
+
+    //Lock article for processing
+    if (!(await updateProcessingStatus(article, true))) return;
+
+    // // Check if link is still valid, if not, delete article and process next one
+    // const not_found = document.querySelector('[about="/page-not-found"]');
+    // if (not_found) {
+    //   if (!(await deleteArticle(article))) return;
+    //   window.location.replace('https://straitstimes.com/');
+    //   return;
+    // }
+
+    // Extract details and update article object
+    let date_published = document.querySelector(
+      ':scope .group-story-postdate .story-postdate'
+    );
+
+    //Delete article if date element cannot be found in html
+    if (date_published) date_published = date_published.textContent;
+    else {
+      logInfo('No date found!');
+      alert('no date found... exiting program...');
+      // if (!(await deleteArticle(article))) return;
+      // window.location.replace('https://straitstimes.com/');
+      return;
+    }
+    article.date_published = processDate(date_published);
+
+    //If article does not contain any text, delete and move to next article
+    article = crawlText(article);
+
+    if (article.text === '') {
+      alert('No text found in article... Exiting program...');
+      // if (!(await deleteArticle(article))) return;
+      // window.location.replace('https://straitstimes.com/');
+      return;
+    }
+
+    //Persist changes to server and update processing status to false
+    if (!(await updateArticle(article))) return;
+    if (!(await updateProcessingStatus(article, false))) return;
+
+    let next_article = await getUnprocessedArticle();
+    if (!next_article) return;
+    window.location.replace(next_article.link);
   }
+});
 
-  //If article url is invalid, delete article and proceed to the next
-  if (!isCurUrlValid()) {
-    if (!(await deleteArticle(article))) return;
-    window.location.replace('https://straitstimes.com/');
-    return;
-  }
-
-  //Lock article for processing
-  if (!(await updateProcessingStatus(article, true))) return;
-
-  // Check if link is still valid, if not, delete article and process next one
-  const not_found = document.querySelector('[about="/page-not-found"]');
-  if (not_found) {
-    if (!(await deleteArticle(article))) return;
-    window.location.replace('https://straitstimes.com/');
-    return;
-  }
-
-  //Extract details and update article object
-  let date_published = document.querySelector(
-    ':scope .article-date .article__row'
-  );
-
-  //Delete article if date element cannot be found in html
-  if (date_published) date_published = date_published.textContent;
-  else {
-    if (!(await deleteArticle(article))) return;
-    window.location.replace('https://straitstimes.com/');
-    return;
-  }
-
-  article.date_published = processDate(date_published);
-
-  //Get category and delete articles that doesn't match the category configuration
-  const category = document.querySelector('.list-object__category');
-  if (category) article.category = category.textContent.trim();
-
-  if (!categories.includes(article.category)) {
-    if (!(await deleteArticle(article))) return;
-    window.location.replace('https://straitstimes.com/');
-    return;
-  }
-
-  //If article does not contain any text, delete and move to next article
-  article = crawlText(article);
-  if (article.text === '') {
-    if (!(await deleteArticle(article))) return;
-    window.location.replace('https://straitstimes.com/');
-    return;
-  }
-
-  //Persist changes to server and update processing status to false
-  if (!(await updateArticle(article))) return;
-  if (!(await updateProcessingStatus(article, false))) return;
-  window.location.replace('https://straitstimes.com/');
-  return;
+(async function () {
+  'use strict';
+  //Redirect if current url does not match query
+  // const baseUrl = `https://www.straitstimes.com/search?searchkey=`;
+  // if (window.location.href === `${baseUrl}`) processing = false;
+  // else window.location.href = `${baseUrl}`;
 })();

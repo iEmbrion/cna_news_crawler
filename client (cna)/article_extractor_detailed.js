@@ -156,6 +156,7 @@ const redirectToArticle = article_link => {
   }
 };
 
+//Raw date format in CNA: "15 Aug 2022 02:43PM"
 const processDate = date_str => {
   let date_publish = date_str;
   date_publish.replace(/\(.*\)/, '').trim();
