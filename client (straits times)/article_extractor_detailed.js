@@ -209,10 +209,30 @@ const cleanText = text => {
   return clean_text;
 };
 
-//Note: Detecting wrong url is not implemented here due to how ST works.
-//To trigger program, go to any article.
-//'window.location.href' detected 'https://www.straitstimes.com/concurrency.html'
 document.addEventListener('DOMSubtreeModified', async e => {
+  //Handle page not found
+  if (
+    e.target.querySelector(':scope #content .section') &&
+    e.target
+      .querySelector(':scope #content .section')
+      .textContent.includes('The requested page could not be found')
+  ) {
+    // Check if link is still valid, if not, delete article and process next one
+    processing = true;
+    alert(`Page could not be found! Terminating...`);
+    // let article = await getUnprocessedArticle();
+    // if (!article) return;
+    // if (!(await deleteArticle(article))) return;
+    // let next_article = await getUnprocessedArticle();
+    // if (!next_article) return;
+    // window.location.replace(next_article.link);
+    return;
+  }
+
+  //Handle normal cases
+  //Note: Detecting wrong url is not implemented here due to how ST works.
+  //To trigger program, go to any article.
+  //'window.location.href' detected 'https://www.straitstimes.com/concurrency.html'
   if (
     !processing &&
     e.target.querySelector(`:scope .group-story-postdate .story-postdate`)
@@ -235,14 +255,6 @@ document.addEventListener('DOMSubtreeModified', async e => {
 
     //Lock article for processing
     if (!(await updateProcessingStatus(article, true))) return;
-
-    // // Check if link is still valid, if not, delete article and process next one
-    // const not_found = document.querySelector('[about="/page-not-found"]');
-    // if (not_found) {
-    //   if (!(await deleteArticle(article))) return;
-    //   window.location.replace('https://straitstimes.com/');
-    //   return;
-    // }
 
     // Extract details and update article object
     let date_published = document.querySelector(
