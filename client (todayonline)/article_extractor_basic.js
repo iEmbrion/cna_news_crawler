@@ -105,7 +105,7 @@ const main = async () => {
   if (pause) return;
 
   //Define your query & categorial params
-  const query = 'disaster';
+  const query = 'ukraine';
   const categories = ['Singapore', 'World'];
   const contentTypes = ['article'];
 
@@ -123,7 +123,10 @@ const main = async () => {
   //Extract articles from current page (links, header, etc...)
   //Return if no more articles to process
   const article_list = crawlArticles();
-  if (article_list.length === 0) return;
+  if (article_list.length === 0) {
+    localStorage.removeItem('cur_page_no');
+    return;
+  }
 
   //Send articles to server for persisting
   if (!saveArticles(article_list)) return;

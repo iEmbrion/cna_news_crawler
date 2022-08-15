@@ -187,8 +187,15 @@ const cleanText = text => {
 
   const cur_url = window.location.href;
   if (cur_url !== article.link) {
-    window.location.replace(article.link);
-    return;
+    //There is a scenario where article url consists of prod-www...
+    //Going to the url triggers a redirect to the normal url (e.g. below)
+    //https://prod-www.todayonline.com/world/trials-aung-san-suu-kyi-heroine-villain-convict
+
+    article.link = article.link.replace('prod-', '');
+    if (cur_url !== article.link) {
+      window.location.replace(article.link);
+      return;
+    }
   }
 
   //If article url is invalid, delete article and proceed to the next
@@ -204,7 +211,6 @@ const cleanText = text => {
   // Check if link is still valid, if not, delete article and process next one
   const not_found = document.querySelector('[about="/page-not-found"]');
   if (not_found) {
-    alert(`not_found!`);
     if (!(await deleteArticle(article))) return;
     window.location.replace('https://www.todayonline.com/');
     return;
@@ -235,8 +241,13 @@ const cleanText = text => {
     return;
   }
 
+  //If article does not contain any text, delete and move to next article
   article = crawlText(article);
-  if (article.text === '') return;
+  if (article.text === '') {
+    if (!(await deleteArticle(article))) return;
+    window.location.replace('https://www.todayonline.com/');
+    return;
+  }
 
   //Persist changes to server and update processing status to false
   if (!(await updateArticle(article))) return;

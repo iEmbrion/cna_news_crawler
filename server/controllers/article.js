@@ -130,7 +130,10 @@ const getRandomNumberBetween = (min, max) => {
 
 exports.getArticleByText = async (req, res, next) => {
   try {
-    const count = await Article.countDocuments({ text: req.query.text }).exec();
+    const count = await Article.countDocuments({
+      text: req.query.text,
+      source: 'todayonline',
+    }).exec();
     console.log(`Remaining Documents for text crawling: ${count}`);
 
     // let skip = getRandomNumberBetween(1, count - 2);
@@ -161,7 +164,7 @@ exports.getArticleByText = async (req, res, next) => {
 //Used for deleting all documents from the collection
 exports.deleteAll = async (req, res, next) => {
   try {
-    await Article.deleteMany({ source: 'todayonline' });
+    await Article.deleteMany({ source: 'straitstimes' });
     res.status(200).json({
       status: 'success',
     });
