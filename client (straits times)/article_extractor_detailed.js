@@ -49,7 +49,7 @@ const getUnprocessedArticle = async () => {
   try {
     //Retrieve a non-processed article
     const server_url =
-      'http://localhost:8000/article/getArticleByText?text=&source=todayonline';
+      'http://localhost:8000/article/getArticleByText?text=&source=straitstimes';
     const res = await fetch(server_url);
     data = await res.json();
 
@@ -176,21 +176,11 @@ const cleanText = text => {
 
 (async function () {
   'use strict';
-
-  let article = null;
-  //Configurations
-  const categories = ['Singapore', 'World'];
-
-  article = await getUnprocessedArticle();
+  let article = await getUnprocessedArticle();
   if (!article) return;
 
   const cur_url = window.location.href;
   if (cur_url !== article.link) {
-    //There is a scenario where article url consists of prod-www...
-    //Going to the url triggers a redirect to the normal url (e.g. below)
-    //https://prod-www.todayonline.com/world/trials-aung-san-suu-kyi-heroine-villain-convict
-
-    article.link = article.link.replace('prod-', '');
     if (cur_url !== article.link) {
       window.location.replace(article.link);
       return;
@@ -200,7 +190,7 @@ const cleanText = text => {
   //If article url is invalid, delete article and proceed to the next
   if (!isCurUrlValid()) {
     if (!(await deleteArticle(article))) return;
-    window.location.replace('https://www.todayonline.com/');
+    window.location.replace('https://straitstimes.com/');
     return;
   }
 
@@ -211,7 +201,7 @@ const cleanText = text => {
   const not_found = document.querySelector('[about="/page-not-found"]');
   if (not_found) {
     if (!(await deleteArticle(article))) return;
-    window.location.replace('https://www.todayonline.com/');
+    window.location.replace('https://straitstimes.com/');
     return;
   }
 
@@ -224,7 +214,7 @@ const cleanText = text => {
   if (date_published) date_published = date_published.textContent;
   else {
     if (!(await deleteArticle(article))) return;
-    window.location.replace('https://www.todayonline.com/');
+    window.location.replace('https://straitstimes.com/');
     return;
   }
 
@@ -236,7 +226,7 @@ const cleanText = text => {
 
   if (!categories.includes(article.category)) {
     if (!(await deleteArticle(article))) return;
-    window.location.replace('https://www.todayonline.com/');
+    window.location.replace('https://straitstimes.com/');
     return;
   }
 
@@ -244,13 +234,13 @@ const cleanText = text => {
   article = crawlText(article);
   if (article.text === '') {
     if (!(await deleteArticle(article))) return;
-    window.location.replace('https://www.todayonline.com/');
+    window.location.replace('https://straitstimes.com/');
     return;
   }
 
   //Persist changes to server and update processing status to false
   if (!(await updateArticle(article))) return;
   if (!(await updateProcessingStatus(article, false))) return;
-  window.location.replace('https://www.todayonline.com/');
+  window.location.replace('https://straitstimes.com/');
   return;
 })();

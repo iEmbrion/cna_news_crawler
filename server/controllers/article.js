@@ -144,7 +144,10 @@ exports.getArticleByText = async (req, res, next) => {
     //   skip: skip,
     // });
 
-    const article = await Article.findOne({ text: req.query.text });
+    const article = await Article.findOne({
+      text: req.query.text,
+      source: req.query.source,
+    });
 
     res.status(200).json({
       status: 'success',
