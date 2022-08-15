@@ -182,7 +182,7 @@ const processDate = date_str => {
   }
 
   //Type 2: AUG 7, 2022, 1:47 AM SGT
-  if ((date_arr.length === 6 && date_arr[4] === 'AM') || date_arr[4] === 'PM') {
+  if (date_arr.length === 6 && (date_arr[4] === 'am' || date_arr[4] === 'pm')) {
     temp =
       date_arr[1] + ' ' + date_arr[0] + ' ' + date_arr[2] + ' 00:00:00 GMT';
     temp = temp.replace(/,/g, '');
@@ -212,6 +212,7 @@ const cleanText = text => {
 document.addEventListener('DOMSubtreeModified', async e => {
   //Handle page not found
   if (
+    !processing &&
     e.target.querySelector(':scope #content .section') &&
     e.target
       .querySelector(':scope #content .section')
