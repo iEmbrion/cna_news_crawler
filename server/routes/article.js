@@ -8,6 +8,7 @@ router.route('/saveAll').post(controller.createArticles);
 router.route('/count').get(controller.countArticles);
 router.route('/getUnprocessedArticles').get(controller.getUnprocessedArticle);
 router.route('/deleteVideo').get(controller.deleteArticlesWithVideo);
+router.route('/updateMany').get(controller.updateMany);
 router
   .route('/:id')
   .post(controller.updateArticle)

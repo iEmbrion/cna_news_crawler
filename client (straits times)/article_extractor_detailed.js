@@ -4,7 +4,7 @@
 // @version      0.1
 // @description  Extract and Update Text Content of news articles
 // @author       You
-// @match        https://www.straitstimes.com/*
+// @match        https://*.straitstimes.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=straitstimes.com
 // @grant        none
 // ==/UserScript==
@@ -171,9 +171,8 @@ const processDate = date_str => {
   let date_arr = date_str.split(' ');
 
   //Check type of date
-
   //Type 1: 2 HOURS AGO
-  if (date_arr.length === 3 && date_arr[2] === 'Ago') {
+  if (date_arr.length === 3 && date_arr[2].toLowerCase() === 'ago') {
     //Get current date and subtract accordingly
     const today = new Date();
     const curHour = today.getHours();
@@ -182,7 +181,10 @@ const processDate = date_str => {
   }
 
   //Type 2: AUG 7, 2022, 1:47 AM SGT
-  if (date_arr.length === 6 && (date_arr[4] === 'am' || date_arr[4] === 'pm')) {
+  if (
+    date_arr.length === 6 &&
+    (date_arr[4].toLowerCase() === 'am' || date_arr[4].toLowerCase() === 'pm')
+  ) {
     temp =
       date_arr[1] + ' ' + date_arr[0] + ' ' + date_arr[2] + ' 00:00:00 GMT';
     temp = temp.replace(/,/g, '');
@@ -198,6 +200,8 @@ const processDate = date_str => {
     date_publish.setHours(hour);
     date_publish.setMinutes(minute);
   }
+
+  // if(date_publish)
   date_publish = date_publish.toJSON();
   return date_publish;
 };
@@ -208,6 +212,21 @@ const cleanText = text => {
   clean_text = clean_text.replace(/\s+/g, ' ').trim();
   return clean_text;
 };
+
+//delete article if it doesn't meet criterias below
+//Prevents outliers from stopping the crawling process
+const articleTimeout = setTimeout(async () => {
+  if (!processing) {
+    processing = true;
+    let article = await getUnprocessedArticle();
+    if (!article) return;
+    if (!(await deleteArticle(article))) return;
+    let next_article = await getUnprocessedArticle();
+    if (!next_article) return;
+    window.location.replace(next_article.link);
+    return;
+  }
+}, 20000);
 
 document.addEventListener('DOMSubtreeModified', async e => {
   //Handle page not found
@@ -294,10 +313,22 @@ document.addEventListener('DOMSubtreeModified', async e => {
   }
 });
 
+//Handle edge cases here
 (async function () {
   'use strict';
-  //Redirect if current url does not match query
-  // const baseUrl = `https://www.straitstimes.com/search?searchkey=`;
-  // if (window.location.href === `${baseUrl}`) processing = false;
-  // else window.location.href = `${baseUrl}`;
+  //Delete multimedia articles and proceed to next article
+  const cur_url = window.location.href;
+  if (
+    cur_url.match(/\/multimedia\//g) ||
+    !cur_url.match(/https:\/\/www.straitstimes.com\/.*/g)
+  ) {
+    processing = true;
+    let article = await getUnprocessedArticle();
+    if (!article) return;
+    if (!(await deleteArticle(article))) return;
+    let next_article = await getUnprocessedArticle();
+    if (!next_article) return;
+    window.location.replace(next_article.link);
+    return;
+  }
 })();

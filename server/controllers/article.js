@@ -133,6 +133,7 @@ exports.getArticleByText = async (req, res, next) => {
     const count = await Article.countDocuments({
       text: req.query.text,
       source: req.query.source,
+      isProcessing: { $exists: false },
     }).exec();
     console.log(
       `Remaining Documents to crawl for ${req.query.source}: ${count}`
@@ -149,6 +150,7 @@ exports.getArticleByText = async (req, res, next) => {
     const article = await Article.findOne({
       text: req.query.text,
       source: req.query.source,
+      isProcessing: { $exists: false },
     });
 
     res.status(200).json({
@@ -192,6 +194,24 @@ exports.deleteArticlesWithVideo = async (req, res, next) => {
   } catch (err) {
     res.status(500).json({
       message: 'Update fail! Record not found.',
+      data: null,
+    });
+  }
+};
+
+exports.updateMany = async (req, res, next) => {
+  try {
+    await Article.updateMany(
+      { source: 'straitstimes', text: { $ne: '' } },
+      { text: '' }
+    );
+    res.status(200).json({
+      message: 'Update success!',
+      data: null,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: 'Batch update failed',
       data: null,
     });
   }
